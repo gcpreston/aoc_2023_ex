@@ -12,7 +12,7 @@ defmodule Aoc2023 do
       5
   """
   def run(day, part) when is_integer(day) and is_integer(part) do
-    module_name = :"Elixir.Day#{day}"
+    module_name = :"Elixir.Aoc2023.Day#{day}"
     module_name.run(part)
   end
 end

@@ -1,4 +1,4 @@
-defprotocol Graph do
+defprotocol Common.Graph do
   @type location() :: any()
   @type t() :: any()
 

@@ -1,4 +1,6 @@
-defmodule Day21 do
+defmodule Aoc2023.Day21 do
+  alias Common.{GridGraph, RepeatingGridGraph, Graph}
+
   def run(1) do
     part1()
   end
@@ -21,7 +23,7 @@ defmodule Day21 do
     g = GridGraph.new(height, width, walls)
 
     %{frontier: frontier} = possible_locations(g, start, 64)
-    IO.puts("Day 21 part 1: #{length(frontier)}")
+    length(frontier)
   end
 
   def part2(test, step_count) do
@@ -30,7 +32,7 @@ defmodule Day21 do
     g = RepeatingGridGraph.new(height, width, walls)
 
     %{frontier: frontier} = possible_locations(g, start, step_count)
-    IO.puts("Day 21 part 2: #{length(frontier)}")
+    length(frontier)
   end
 
   defp read_input(test) when is_boolean(test) do
@@ -66,10 +68,8 @@ defmodule Day21 do
 
   defp parse_graph_data(input) when is_binary(input) do
     lines = String.split(input, "\n")
-    dbg(lines)
     height = length(lines)
     width = String.length(Enum.at(lines, 0))
-    dbg({width, height})
 
     walls =
       Enum.with_index(lines)
@@ -100,8 +100,6 @@ defmodule Day21 do
   end
 
   defp print_graph(g, start) do
-    IO.puts("graph height #{g.height} and width #{g.width}")
-
     for row <- 0..(g.height - 1) do
       for col <- 0..(g.width - 1) do
         location = {row, col}

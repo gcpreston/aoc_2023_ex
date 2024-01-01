@@ -27,3 +27,6 @@ aoc_2023_ex-*.tar
 
 # AoC input.
 /input/
+
+# Ignore escript build output.
+aoc_2023
