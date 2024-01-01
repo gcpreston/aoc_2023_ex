@@ -1,4 +1,12 @@
 defmodule Day21 do
+  def run(1) do
+    part1()
+  end
+
+  def run(2) do
+    part2()
+  end
+
   def part1 do
     part1(false)
   end
