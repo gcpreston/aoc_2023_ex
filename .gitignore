@@ -24,3 +24,6 @@ aoc_2023_ex-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# AoC input.
+/input/
