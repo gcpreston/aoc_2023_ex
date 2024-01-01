@@ -1,6 +1,7 @@
-defmodule Graph do
+defprotocol Graph do
   @type location() :: any()
   @type t() :: any()
 
-  @callback neighbors(t(), location()) :: [location()]
+  @spec neighbors(t(), location()) :: [location()]
+  def neighbors(graph, location)
 end

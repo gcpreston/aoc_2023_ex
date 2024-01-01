@@ -3,17 +3,34 @@ defmodule Day21 do
     part1(false)
   end
 
-  def part1(test) do
+  def part2 do
+    part2(false, 26501365)
+  end
+
+  def part1(test) when is_boolean(test) do
+    input = read_input(test)
+    {height, width, walls, start} = parse_graph_data(input)
+    g = GridGraph.new(height, width, walls)
+
+    %{frontier: frontier} = possible_locations(g, start, 64)
+    IO.puts("Day 21 part 1: #{length(frontier)}")
+  end
+
+  def part2(test, step_count) do
+    input = read_input(test)
+    {height, width, walls, start} = parse_graph_data(input)
+    g = RepeatingGridGraph.new(height, width, walls)
+
+    %{frontier: frontier} = possible_locations(g, start, step_count)
+    IO.puts("Day 21 part 2: #{length(frontier)}")
+  end
+
+  defp read_input(test) when is_boolean(test) do
     test_input = "input/test.txt"
     real_input = "input/day_21.txt"
 
     file_path = if test, do: test_input, else: real_input
-    contents = String.trim(File.read!(file_path))
-
-    {g, start} = parse_graph(contents)
-
-    %{frontier: frontier} = possible_locations(g, start, 64)
-    IO.puts("Day 21 part 1: #{length(frontier)}")
+    String.trim(File.read!(file_path))
   end
 
   defp possible_locations(graph, start, max_depth) do
@@ -21,7 +38,7 @@ defmodule Day21 do
       1..max_depth,
       %{frontier: [start], visited: MapSet.new()},
       fn _, %{frontier: frontier, visited: visited} ->
-        new_frontier = Enum.uniq(Enum.flat_map(frontier, &(GridGraph.neighbors(graph, &1))))
+        new_frontier = Enum.uniq(Enum.flat_map(frontier, &(Graph.neighbors(graph, &1))))
         new_visited = Enum.reduce(new_frontier, visited, &(MapSet.put(&2, &1)))
         %{frontier: new_frontier, visited: new_visited}
       end
@@ -39,8 +56,8 @@ defmodule Day21 do
     end)
   end
 
-  defp parse_graph(data) when is_binary(data) do
-    lines = String.split(data, "\n")
+  defp parse_graph_data(input) when is_binary(input) do
+    lines = String.split(input, "\n")
     dbg(lines)
     height = length(lines)
     width = String.length(Enum.at(lines, 0))
@@ -71,7 +88,7 @@ defmodule Day21 do
         end
       end)
 
-    {GridGraph.new(height, width, walls), start}
+      {height, width, walls, start}
   end
 
   defp print_graph(g, start) do

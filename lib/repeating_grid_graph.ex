@@ -1,4 +1,4 @@
-defmodule GridGraph do
+defmodule RepeatingGridGraph do
   defstruct [:height, :width, :walls]
 
   @type grid_location() :: {integer(), integer()}
@@ -14,18 +14,20 @@ defmodule GridGraph do
   end
 end
 
-defimpl Graph, for: GridGraph do
-  def neighbors(graph, {row, col}) do
+defimpl Graph, for: RepeatingGridGraph do
+  use Memoize
+
+  defmemo neighbors(graph, {row, col}) do
     [{row + 1, col}, {row - 1, col}, {row, col - 1}, {row, col + 1}]
-    |> Enum.filter(fn location -> in_bounds(graph, location) end)
     |> Enum.filter(fn location -> passable(graph, location) end)
   end
 
-  defp in_bounds(graph, {row, col}) do
-    row >= 0 && row < graph.height && col >= 0 && col < graph.width
+  defmemop passable(graph, {row, col}) do
+    check_location = {Integer.mod(row, graph.height), Integer.mod(col, graph.width)}
+    in_bounds_passable(graph, check_location)
   end
 
-  defp passable(graph, location) do
+  defmemop in_bounds_passable(graph, location) do
     !MapSet.member?(graph.walls, location)
   end
 end
