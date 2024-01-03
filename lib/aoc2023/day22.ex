@@ -48,6 +48,10 @@ defmodule Aoc2023.Day22 do
     def height(%__MODULE__{start_coord: s, end_coord: e}) do
       e.z - s.z + 1
     end
+
+    def debug(b) do
+      "#{b.id}: #{b.start_coord.x},#{b.start_coord.y},#{b.start_coord.z}~#{b.end_coord.x},#{b.end_coord.y},#{b.end_coord.z}"
+    end
   end
 
   defp part1 do
@@ -55,11 +59,12 @@ defmodule Aoc2023.Day22 do
       read_input()
       |> parse_input()
 
-    {_z_heights, supported_by} =
+    sorted_snapshot =
       Enum.sort(snapshot, fn brick1, brick2 ->
         Brick.min_z(brick1) <= Brick.min_z(brick2)
       end)
-      |> fall()
+
+    {_z_heights, supported_by} = fall(sorted_snapshot)
 
     initial_supported_by =
       for brick <- snapshot, into: %{} do
@@ -79,14 +84,12 @@ defmodule Aoc2023.Day22 do
     # IO.inspect(supports, label: "supports")
 
     to_demolish =
-      Enum.flat_map(snapshot, fn brick ->
+      Enum.filter(sorted_snapshot, fn brick ->
         supports_nothing = length(supports[brick.id]) == 0
         has_backup_support = Enum.all?(supports[brick.id], fn supportee -> length(supported_by[supportee]) > 1 end)
+        # IO.puts("brick #{Brick.to_string(brick)} supports nothing? #{supports_nothing} has backup support? #{has_backup_support}")
 
-        case supports_nothing || has_backup_support do
-          true -> [brick.id]
-          false -> []
-        end
+        supports_nothing || has_backup_support
       end)
 
     length(to_demolish)
@@ -95,7 +98,7 @@ defmodule Aoc2023.Day22 do
   defp fall(snapshot) do
     # IDEA
     # 1. Initialize map of current Z value looking from above
-    # 2. Iterate through snapshot by Z value small-large and "fall" them onto the array
+    # 2. Iterate through snapshot by Z value small-large and "fall" them onto the map
     # 3. Add any overlaps to an overlap tracker, returned at the end
 
     z_heights = for x <- 0..9, y <- 0..9, into: %{}, do: {{x, y}, %{z: 0, brick: nil}}
