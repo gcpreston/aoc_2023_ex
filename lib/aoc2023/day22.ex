@@ -3,119 +3,145 @@ defmodule Aoc2023.Day22 do
     part1()
   end
 
-  defmodule Coordinate do
-    defstruct [:x, :y, :z]
-
-    @type t() :: %__MODULE__{
-      x: integer(),
-      y: integer(),
-      z: integer()
-    }
-  end
-
-  defmodule FlatCoordinate do
-    defstruct [:x, :y]
-
-    @type t() :: %__MODULE__{
-      x: integer(),
-      y: integer()
-    }
+  def run(2) do
+    part2()
   end
 
   defp part1 do
-    snapshot =
+    read_input()
+    |> parse_input()
+    |> fall()
+    |> supported_by()
+    |> demolishable()
+    |> length()
+  end
+
+  defp part2 do
+    fallen_bricks =
       read_input()
       |> parse_input()
+      |> fall()
 
-    {_z_heights, supported_by} = fall(snapshot)
+    supported_by = supported_by(fallen_bricks)
+    supporting_bricks = supporting_bricks(fallen_bricks)
 
-    initial_supported_by =
-      for brick <- snapshot, into: %{} do
-        {brick, []}
-      end
-
-    # This could probably be written more pragmatically as a comprehension
-    supports =
-      Enum.reduce(supported_by, initial_supported_by, fn {brick_id, bricks_underneath}, supports_acc ->
-        Enum.reduce(bricks_underneath, supports_acc, fn supporting_brick_id, acc ->
-          new_bricks_being_supported = [brick_id | acc[supporting_brick_id]]
-          Map.put(acc, supporting_brick_id, new_bricks_being_supported)
-        end)
-      end)
-
-    # IO.inspect(supported_by, label: "supported_by")
-    # IO.inspect(supports, label: "supports")
-
-    Enum.map(supports, fn {brick, being_supported} -> length(being_supported) end)
-    |> Enum.sum()
-    |> IO.inspect(label: "huh now")
-
-    to_demolish =
-      Enum.filter(snapshot, fn brick ->
-        supports_nothing = length(supports[brick]) == 0
-        has_backup_support = Enum.all?(supports[brick], fn supportee -> length(supported_by[supportee]) > 1 end)
-        # IO.puts("brick #{Brick.to_string(brick)} supports nothing? #{supports_nothing} has backup support? #{has_backup_support}")
-
-        supports_nothing || has_backup_support
-      end)
-
-    undemolishable =
-      Enum.flat_map(snapshot, fn brick ->
-        if length(supported_by[brick]) == 1 do
-          supported_by[brick]
-        else
-          []
-        end
-      end)
-    undemolishable = MapSet.new(undemolishable)
-
-    IO.puts("total length #{length(snapshot)} demolishable #{length(to_demolish)} undemolishable #{MapSet.size(undemolishable)}")
-
-    length(snapshot) - MapSet.size(undemolishable)
+    supported_by
+    |> undemolishable()
+    |> then(fn candidates ->
+      candidates
+      |> IO.inspect(label: "candidates")
+      |> Enum.map(&(length(simulate_demolish(supported_by, supporting_bricks, &1))))
+      |> Enum.max()
+    end)
   end
 
   defp fall(snapshot) do
-    # IDEA
-    # 1. Initialize map of current Z value looking from above
-    # 2. Iterate through snapshot by Z value small-large and "fall" them onto the map
-    # 3. Add any overlaps to an overlap tracker, returned at the end
-
     sorted_snapshot =
       Enum.sort(snapshot, fn {_, _, z0_1.._}, {_, _, z0_2.._} ->
         z0_1 <= z0_2
       end)
 
-    z_heights = for x <- 0..9, y <- 0..9, into: %{}, do: {{x, y}, %{z: 0, brick: nil}}
-    Enum.reduce(sorted_snapshot, {z_heights, %{}}, fn brick, {z_heights_acc, supports_acc} ->
-      {new_z_heights, brick_supports} = fall_brick(brick, z_heights_acc)
-      {new_z_heights, Map.put_new(supports_acc, brick, brick_supports)}
-    end)
+    initial_z_heights = for x <- 0..9, y <- 0..9, into: %{}, do: {{x, y}, %{z: 0, brick: nil}}
+    initial_fallen_bricks = []
+
+    fall(sorted_snapshot, initial_fallen_bricks, initial_z_heights)
   end
 
-  defp fall_brick(brick, z_heights) do
+  defp fall([], fallen_bricks, _z_heights), do: fallen_bricks
+
+  defp fall([brick | remaining_bricks], fallen_bricks, z_heights) do
+    # IDEA
+    # 1. Initialize map of current Z value looking from above
+    # 2. Iterate through snapshot by Z value small-large and "fall" them onto the map
+    # 3. ~~Add any overlaps to an overlap tracker, returned at the end~~
+
+    {new_fallen_bricks, new_z_heights} = fall_brick(brick, fallen_bricks, z_heights)
+    fall(remaining_bricks, new_fallen_bricks, new_z_heights)
+  end
+
+  defp fall_brick({x_range, y_range, _z_range} = brick, fallen_bricks, z_heights) do
     footprint = brick_footprint(brick)
     max_z = Enum.map(footprint, fn coord -> z_heights[coord][:z] end) |> Enum.max()
-    new_z = max_z + brick_height(brick)
+    brick_height = brick_height(brick)
+    new_z = max_z + brick_height
 
-    Enum.reduce(footprint, {z_heights, []}, fn coord, {z_heights_acc, supported_by_acc} ->
-      %{z: old_z, brick: old_brick} = z_heights_acc[coord]
-      new_supported_by =
-        if old_brick != nil && old_z == max_z do
-          [old_brick | supported_by_acc]
-        else
-          supported_by_acc
-        end
+    new_z_heights =
+      Enum.reduce(footprint, z_heights, fn coord, z_heights_acc ->
+        Map.put(z_heights_acc, coord, %{z: new_z, brick: brick})
+      end)
 
-      new_z_heights = Map.put(z_heights_acc, coord, %{z: new_z, brick: brick})
+    new_z0 = max_z + 1
+    new_z1 = new_z0 + brick_height - 1
+    fallen_brick = {x_range, y_range, new_z0..new_z1}
 
-      {new_z_heights, new_supported_by}
+    {[fallen_brick | fallen_bricks], new_z_heights}
+  end
+
+  # Create a map of brick => bricks supported by that brick
+  defp supported_by(fallen_bricks) do
+    for b1 <- fallen_bricks, into: %{} do
+      bricks_being_supported = Enum.filter(fallen_bricks, fn b2 -> supports?(b2, b1) end)
+      {b1, bricks_being_supported}
+    end
+  end
+
+  # Create a map of brick => bricks supporting that brick
+  defp supporting_bricks(fallen_bricks) do
+    for b1 <- fallen_bricks, into: %{} do
+      supporting_bricks = Enum.filter(fallen_bricks, fn b2 -> supports?(b1, b2) end)
+      {b1, supporting_bricks}
+    end
+  end
+
+  # Does the first brick support the second brick?
+  defp supports?({x1, y1, _..top1}, {x2, y2, bottom2.._}) do
+    top1 + 1 == bottom2 && !Range.disjoint?(x1, x2) && !Range.disjoint?(y1, y2)
+  end
+
+  # Find a list of demolishable bricks.
+  defp demolishable(supported_by) do
+    # a brick is undemolishable if it is the only support for another brick
+    undemolishable = undemolishable(supported_by) |> IO.inspect(label: "undemolishable")
+
+    supported_by
+    |> Map.keys()
+    |> Enum.filter(&(!(&1 in undemolishable)))
+    |> IO.inspect(label: "demolishable")
+  end
+
+  # Find a set of bricks that would cause other bricks to fall if demolished.
+  defp undemolishable(supported_by) do
+    Enum.flat_map(supported_by, fn {_brick, supporting_bricks} ->
+      case length(supporting_bricks) do
+        1 -> supporting_bricks
+        _ -> []
+      end
     end)
+    |> MapSet.new()
+  end
+
+  defp simpulate_demolish(supported_by, supporting, brick) when is_tuple(brick) do
+    simulate_demolish(supported_by, supporting, [brick])
+  end
+
+  # Find the bricks that would fall if the given bricks were demolished
+  defp simulate_demolish(supported_by, supporting, bricks) when is_list(bricks) do
+    potential_falls =
+      Enum.flat_map(bricks, &(supported_by[&1]))
+      |> Enum.uniq
+
+    would_fall =
+      Enum.filter(potential_falls, fn brick ->
+        supporters = supporting[brick]
+        remaining_supporters = supporters -- bricks
+        length(remaining_supporters) == 0
+      end)
+
+    simulate_demolish(supported_by, supporting, bricks ++ would_fall)
   end
 
   defp brick_footprint({x_range, y_range, _z_range}) do
-    for x <- x_range, y <- y_range do
-      {x, y}
-    end
+    for x <- x_range, y <- y_range, do: {x, y}
   end
 
   defp brick_height({_, _, z0..z1}) do
@@ -123,7 +149,7 @@ defmodule Aoc2023.Day22 do
   end
 
   defp read_input do
-    path = "input/day_22.txt"
+    path = "input/test.txt"
 
     File.read!(path)
     |> String.trim()
