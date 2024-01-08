@@ -5,8 +5,8 @@ defmodule Common.DirectedGraph do
 
   @type node_id() :: non_neg_integer()
   @type t() :: %__MODULE__{
-    adjacencies: [[node_id()]]
-  }
+          adjacencies: [[node_id()]]
+        }
 
   defstruct [:adjacencies]
 

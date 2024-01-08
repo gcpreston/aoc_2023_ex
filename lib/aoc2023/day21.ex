@@ -14,7 +14,7 @@ defmodule Aoc2023.Day21 do
   end
 
   def part2 do
-    part2(false, 26501365)
+    part2(false, 26_501_365)
   end
 
   def part1(test) when is_boolean(test) do
@@ -48,8 +48,8 @@ defmodule Aoc2023.Day21 do
       1..max_depth,
       %{frontier: [start], visited: MapSet.new()},
       fn _, %{frontier: frontier, visited: visited} ->
-        new_frontier = Enum.uniq(Enum.flat_map(frontier, &(Graph.neighbors(graph, &1))))
-        new_visited = Enum.reduce(new_frontier, visited, &(MapSet.put(&2, &1)))
+        new_frontier = Enum.uniq(Enum.flat_map(frontier, &Graph.neighbors(graph, &1)))
+        new_visited = Enum.reduce(new_frontier, visited, &MapSet.put(&2, &1))
         %{frontier: new_frontier, visited: new_visited}
       end
     )
@@ -96,6 +96,6 @@ defmodule Aoc2023.Day21 do
         end
       end)
 
-      {height, width, walls, start}
+    {height, width, walls, start}
   end
 end

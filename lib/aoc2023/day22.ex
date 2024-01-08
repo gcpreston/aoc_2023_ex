@@ -28,7 +28,7 @@ defmodule Aoc2023.Day22 do
     would_cause_falls = undemolishable(supporting_bricks)
 
     would_cause_falls
-    |> Enum.map(&(simulate_demolish(supported_by, supporting_bricks, &1)))
+    |> Enum.map(&simulate_demolish(supported_by, supporting_bricks, &1))
     |> Enum.sum()
   end
 
@@ -123,7 +123,9 @@ defmodule Aoc2023.Day22 do
   # Find the bricks that would fall if the given bricks were demolished
   defp simulate_demolish(supported_by, supporting, queue, fall_total) do
     case :queue.out(queue) do
-      {:empty, _} -> fall_total
+      {:empty, _} ->
+        fall_total
+
       {{:value, to_demolish}, queue} ->
         potential_falls = Map.get(supported_by, to_demolish, [])
 
@@ -134,12 +136,18 @@ defmodule Aoc2023.Day22 do
             length(remaining_supporters) == 0
           end)
 
-        supporting = Enum.reduce(potential_falls, supporting, fn brick, acc ->
-          Map.put(acc, brick, List.delete(acc[brick], to_demolish) -- would_fall)
-        end)
+        supporting =
+          Enum.reduce(potential_falls, supporting, fn brick, acc ->
+            Map.put(acc, brick, List.delete(acc[brick], to_demolish) -- would_fall)
+          end)
 
-        simulate_demolish(supported_by, supporting, :queue.join(queue, :queue.from_list(would_fall)), fall_total + length(would_fall))
-      end
+        simulate_demolish(
+          supported_by,
+          supporting,
+          :queue.join(queue, :queue.from_list(would_fall)),
+          fall_total + length(would_fall)
+        )
+    end
   end
 
   defp brick_footprint({x_range, y_range, _z_range}) do
