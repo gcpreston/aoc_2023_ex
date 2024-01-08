@@ -11,7 +11,7 @@ defmodule Aoc2023.Day22 do
     read_input()
     |> parse_input()
     |> fall()
-    |> supported_by()
+    |> supporting_bricks()
     |> demolishable()
     |> length()
   end
@@ -22,17 +22,14 @@ defmodule Aoc2023.Day22 do
       |> parse_input()
       |> fall()
 
-    supported_by = supported_by(fallen_bricks)
-    supporting_bricks = supporting_bricks(fallen_bricks)
+    supported_by = supported_by(fallen_bricks) |> dbg()
+    supporting_bricks = supporting_bricks(fallen_bricks) |> dbg()
 
-    supported_by
-    |> undemolishable()
-    |> then(fn candidates ->
-      candidates
-      |> IO.inspect(label: "candidates")
-      |> Enum.map(&(length(simulate_demolish(supported_by, supporting_bricks, &1))))
-      |> Enum.max()
-    end)
+    would_cause_falls = undemolishable(supporting_bricks)
+
+    would_cause_falls
+    |> Enum.map(&(simulate_demolish(supported_by, supporting_bricks, &1)))
+    |> Enum.sum()
   end
 
   defp fall(snapshot) do
@@ -80,7 +77,7 @@ defmodule Aoc2023.Day22 do
   # Create a map of brick => bricks supported by that brick
   defp supported_by(fallen_bricks) do
     for b1 <- fallen_bricks, into: %{} do
-      bricks_being_supported = Enum.filter(fallen_bricks, fn b2 -> supports?(b2, b1) end)
+      bricks_being_supported = Enum.filter(fallen_bricks, fn b2 -> supports?(b1, b2) end)
       {b1, bricks_being_supported}
     end
   end
@@ -88,7 +85,7 @@ defmodule Aoc2023.Day22 do
   # Create a map of brick => bricks supporting that brick
   defp supporting_bricks(fallen_bricks) do
     for b1 <- fallen_bricks, into: %{} do
-      supporting_bricks = Enum.filter(fallen_bricks, fn b2 -> supports?(b1, b2) end)
+      supporting_bricks = Enum.filter(fallen_bricks, fn b2 -> supports?(b2, b1) end)
       {b1, supporting_bricks}
     end
   end
@@ -101,17 +98,16 @@ defmodule Aoc2023.Day22 do
   # Find a list of demolishable bricks.
   defp demolishable(supported_by) do
     # a brick is undemolishable if it is the only support for another brick
-    undemolishable = undemolishable(supported_by) |> IO.inspect(label: "undemolishable")
+    undemolishable = undemolishable(supported_by)
 
     supported_by
     |> Map.keys()
     |> Enum.filter(&(!(&1 in undemolishable)))
-    |> IO.inspect(label: "demolishable")
   end
 
   # Find a set of bricks that would cause other bricks to fall if demolished.
-  defp undemolishable(supported_by) do
-    Enum.flat_map(supported_by, fn {_brick, supporting_bricks} ->
+  defp undemolishable(supporting) do
+    Enum.flat_map(supporting, fn {_brick, supporting_bricks} ->
       case length(supporting_bricks) do
         1 -> supporting_bricks
         _ -> []
@@ -120,24 +116,30 @@ defmodule Aoc2023.Day22 do
     |> MapSet.new()
   end
 
-  defp simpulate_demolish(supported_by, supporting, brick) when is_tuple(brick) do
-    simulate_demolish(supported_by, supporting, [brick])
+  defp simulate_demolish(supported_by, supporting, brick) when is_tuple(brick) do
+    simulate_demolish(supported_by, supporting, :queue.from_list([brick]), 0)
   end
 
   # Find the bricks that would fall if the given bricks were demolished
-  defp simulate_demolish(supported_by, supporting, bricks) when is_list(bricks) do
-    potential_falls =
-      Enum.flat_map(bricks, &(supported_by[&1]))
-      |> Enum.uniq
+  defp simulate_demolish(supported_by, supporting, queue, fall_total) do
+    case :queue.out(queue) do
+      {:empty, _} -> fall_total
+      {{:value, to_demolish}, queue} ->
+        potential_falls = Map.get(supported_by, to_demolish, [])
 
-    would_fall =
-      Enum.filter(potential_falls, fn brick ->
-        supporters = supporting[brick]
-        remaining_supporters = supporters -- bricks
-        length(remaining_supporters) == 0
-      end)
+        would_fall =
+          Enum.filter(potential_falls, fn brick ->
+            supporters = supporting[brick]
+            remaining_supporters = List.delete(supporters, to_demolish)
+            length(remaining_supporters) == 0
+          end)
 
-    simulate_demolish(supported_by, supporting, bricks ++ would_fall)
+        supporting = Enum.reduce(potential_falls, supporting, fn brick, acc ->
+          Map.put(acc, brick, List.delete(acc[brick], to_demolish) -- would_fall)
+        end)
+
+        simulate_demolish(supported_by, supporting, :queue.join(queue, :queue.from_list(would_fall)), fall_total + length(would_fall))
+      end
   end
 
   defp brick_footprint({x_range, y_range, _z_range}) do
@@ -149,7 +151,7 @@ defmodule Aoc2023.Day22 do
   end
 
   defp read_input do
-    path = "input/test.txt"
+    path = "input/day_22.txt"
 
     File.read!(path)
     |> String.trim()
