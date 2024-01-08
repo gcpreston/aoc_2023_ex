@@ -98,25 +98,4 @@ defmodule Aoc2023.Day21 do
 
       {height, width, walls, start}
   end
-
-  defp print_graph(g, start) do
-    for row <- 0..(g.height - 1) do
-      for col <- 0..(g.width - 1) do
-        location = {row, col}
-
-        char =
-          cond do
-            MapSet.member?(g.walls, location) -> "#"
-            location == start -> "S"
-            true -> "."
-          end
-
-        IO.write(char)
-      end
-
-      IO.write("\n")
-    end
-
-    nil
-  end
 end
