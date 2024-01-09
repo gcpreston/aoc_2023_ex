@@ -30,3 +30,6 @@ aoc_2023_ex-*.tar
 
 # Ignore escript build output.
 aoc_2023
+
+# Ignore advent_of_code_utils config
+/config/

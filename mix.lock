@@ -1,3 +1,6 @@
 %{
+  "advent_of_code_utils": {:hex, :advent_of_code_utils, "4.0.1", "591073a49600cbceae6d92e0fb2d2c56b59f6d383851e2a7c00c3bf0e4f33f4f", [:mix], [{:floki, "~> 0.34", [hex: :floki, repo: "hexpm", optional: false]}, {:tz, "~> 0.26", [hex: :tz, repo: "hexpm", optional: false]}], "hexpm", "684d016883d7b5443d9d22abc34013fb6f1d5d9ff114859a40890545a570eec8"},
+  "floki": {:hex, :floki, "0.35.2", "87f8c75ed8654b9635b311774308b2760b47e9a579dabf2e4d5f1e1d42c39e0b", [:mix], [], "hexpm", "6b05289a8e9eac475f644f09c2e4ba7e19201fd002b89c28c1293e7bd16773d9"},
   "memoize": {:hex, :memoize, "1.4.3", "ead4ba248291acbaecbfe7e68ed762d329dd9c29c727020c7393dda4060c4471", [:mix], [], "hexpm", "a75176b84b9ce92faaf567c82fcbc584ef95727e0827cb38606b0a197f7e47ef"},
+  "tz": {:hex, :tz, "0.26.5", "bfe8efa345670f90351c5c31d22455d0307c5d9895fbdede7deeb215a7b60dbe", [:mix], [{:castore, "~> 0.1 or ~> 1.0", [hex: :castore, repo: "hexpm", optional: true]}, {:mint, "~> 1.5", [hex: :mint, repo: "hexpm", optional: true]}], "hexpm", "c4f9392d710582c7108b6b8c635f4981120ec4b2072adbd242290fc842338183"},
 }
