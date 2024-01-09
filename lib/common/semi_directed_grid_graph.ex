@@ -30,25 +30,49 @@ defmodule Common.SemiDirectedGridGraph do
   @spec longest_distance(t(), grid_location(), grid_location()) :: integer()
   def longest_distance(graph, start, finish) do
     topo_ordering = topological_ordering(graph, start)
-    dists = longest_distances(graph, topo_ordering, %{start => 0})
+    dists = longest_distances(graph, topo_ordering, MapSet.new(), %{start => 0})
     dists[finish]
   end
 
-  def longest_distances(_graph, [], dists), do: dists
-  def longest_distances(graph, topo_ordering, dists) do
+  def longest_distances(_graph, [], _visited, dists), do: dists
+  def longest_distances(graph, topo_ordering, visited, dists) do
+    debug = {1, 2}
+
     [node | popped_topo_ordering] = topo_ordering
-    neighbors = Common.Graph.neighbors(graph, node)
+    neighbors =
+      Common.Graph.neighbors(graph, node)
+      |> Enum.filter(&!MapSet.member?(visited, &1))
+
+    if node == debug do
+      IO.puts("\nVisiting debug node #{inspect(node)}")
+      IO.inspect(neighbors, label: "neighbors")
+      IO.inspect(Enum.map(neighbors, &dists[&1]), label: "distances", charlists: :as_lists)
+      IO.puts("node distance #{inspect(dists[node])}")
+    end
 
     dists =
-      Enum.reduce(neighbors, dists, fn neighbor, dists ->
-        if !Map.has_key?(dists, neighbor) do
-          Map.put(dists, neighbor, dists[node] + 1)
-        else
-          dists
+      Enum.reduce(neighbors, dists, fn neighbor, dists_acc ->
+        node_distance = dists_acc[node]
+
+        if neighbor == debug do
+          IO.puts("Evaluating neighbor #{inspect(neighbor)} from #{inspect(node)}: distances #{node_distance}, #{inspect(Map.get(dists_acc, neighbor))}")
         end
+
+        case Map.get(dists_acc, neighbor) do
+          nil -> Map.put(dists_acc, neighbor, node_distance + 1)
+
+          neighbor_distance ->
+            if neighbor_distance < node_distance + 1 do
+              Map.put(dists_acc, neighbor, node_distance + 1)
+            else
+              dists_acc
+            end
+          end
       end)
 
-    longest_distances(graph, popped_topo_ordering, dists)
+    visited = MapSet.put(visited, node)
+
+    longest_distances(graph, popped_topo_ordering, visited, dists)
   end
 
   @spec topological_ordering(t(), grid_location()) :: [grid_location()]
@@ -56,6 +80,7 @@ defmodule Common.SemiDirectedGridGraph do
     topological_ordering(graph, MapSet.new(), [start], [])
   end
 
+  # This doesn't work because the graph has loops...
   defp topological_ordering(_graph, _visited, [], ordering), do: ordering
   defp topological_ordering(graph, visited, stack, ordering) do
     [visit | popped_stack] = stack
