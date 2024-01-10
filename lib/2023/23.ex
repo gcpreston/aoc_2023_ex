@@ -1,14 +1,16 @@
 import AOC
 
 aoc 2023, 23 do
-  alias Common.{Graph, GridGraph, DWGraph, SemiDirectedGridGraph}
+  alias Common.{Graph, DWGraph, SemiDirectedGridGraph, UWGraph}
 
   def p1(input) do
     {g, start, finish} = parse_input(input)
     longest_distance(g, start, finish)
   end
 
-  def p2(_input) do
+  def p2(input) do
+    {g, start, finish} = parse_undirected_input(input)
+    undirected_longest_distance(g, start, finish)
   end
 
   def longest_distance(graph, start, finish) do
@@ -47,6 +49,40 @@ aoc 2023, 23 do
     visited = MapSet.put(visited, node)
 
     longest_distances(graph, popped_topo_ordering, visited, dists)
+  end
+
+  def undirected_longest_distance(graph, start, finish) do
+    # IDEA
+    # 1. Start at start node
+    # 2. Find neighbors
+    # 3. Return max of longest distance from each neighbor with updated visited set
+    undirected_longest_distance(graph, start, finish, MapSet.new(), 0)
+  end
+
+  defp undirected_longest_distance(graph, node, finish, visited, current_distance) when node == finish do
+    current_distance
+  end
+
+  defp undirected_longest_distance(graph, node, finish, visited, current_distance) do
+    distances =
+      Graph.neighbors(graph, node)
+      |> Enum.filter(&(!MapSet.member?(visited, &1)))
+      |> Enum.map(fn neighbor ->
+        undirected_longest_distance(
+          graph,
+          neighbor,
+          finish,
+          MapSet.put(visited, node),
+          current_distance + graph.weights[{node, neighbor}]
+        )
+      end)
+      |> Enum.reject(&is_nil/1)
+
+    if length(distances) == 0 do
+      nil
+    else
+      Enum.max(distances)
+    end
   end
 
   def topological_ordering(graph, start) do
@@ -96,11 +132,11 @@ aoc 2023, 23 do
   defp find_nodes(grid, [{current, prev} | to_visit], finish, nodes, edges) do
     neighbors = SemiDirectedGridGraph.neighbors(grid, current, prev)
     next_nodes_and_weights = Enum.map(neighbors, &find_next_node(grid, finish, &1, current, 1))
-    nodes = nodes ++ Enum.map(next_nodes_and_weights, fn {node, _weight, _prev} -> node end)
+    nodes = (nodes ++ Enum.map(next_nodes_and_weights, fn {node, _weight, _prev} -> node end)) |> Enum.uniq()
 
     edges =
-      edges ++
-        Enum.map(next_nodes_and_weights, fn {node, weight, _prev} -> {current, node, weight} end)
+      (edges ++ Enum.map(next_nodes_and_weights, fn {node, weight, _prev} -> {current, node, weight} end))
+      |> Enum.uniq()
 
     to_visit =
       to_visit ++ Enum.map(next_nodes_and_weights, fn {node, _weight, prev} -> {node, prev} end)
@@ -122,6 +158,25 @@ aoc 2023, 23 do
     |> List.first()
   end
 
+  defp parse_undirected_input(input) do
+    {grid_graph, start, finish} = parse_semi_directed_grid(input)
+    {nodes, edges} = find_nodes(grid_graph, start, finish)
+
+    uw_graph = UWGraph.new()
+    uw_graph = UWGraph.add_node(uw_graph, start)
+    uw_graph = UWGraph.add_node(uw_graph, finish)
+
+    uw_graph =
+      Enum.reduce(nodes, uw_graph, fn node, uw_graph -> UWGraph.add_node(uw_graph, node) end)
+
+    uw_graph =
+      Enum.reduce(edges, uw_graph, fn {from, to, weight}, uw_graph ->
+        UWGraph.add_edge(uw_graph, from, to, weight)
+      end)
+
+    {uw_graph, start, finish}
+  end
+
   defp parse_semi_directed_grid(input) do
     lines = String.split(input, "\n")
 
@@ -133,7 +188,7 @@ aoc 2023, 23 do
       |> Enum.reduce([], fn {line, row}, acc ->
         line_walls =
           String.graphemes(line)
-          |> all_indices(fn c -> c in ["#", "≈"] end)
+          |> all_indices(fn c -> c == "#" end)
           |> Enum.map(fn col -> {row, col} end)
 
         Enum.concat(acc, line_walls)
