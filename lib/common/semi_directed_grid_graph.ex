@@ -96,16 +96,35 @@ defmodule Common.SemiDirectedGridGraph do
       topological_ordering(graph, visited, neighbors ++ stack, ordering)
     end
   end
-end
 
-defimpl Common.Graph, for: Common.SemiDirectedGridGraph do
-  def neighbors(graph, {row, col} = location) do
+  def dfs_reduce(graph, initial, func), do: dfs_reduce(graph, initial, func, [])
+
+  defp dfs_reduce(_graph, acc, _func, []), do: acc
+  defp dfs_reduce(graph, acc, func, [{node, came_from} | stack_rest]) do
+      acc = func.(node, acc)
+      stack_ext = neighbors(graph, node, came_from) |> Enum.map(&{&1, node})
+      stack = stack_ext ++ stack_rest
+      dfs_reduce(graph, acc, func, stack)
+  end
+
+  ## Graph protocol but specialized...
+
+  def all_neighbors(graph, {row, col}) do
     [{row + 1, col}, {row - 1, col}, {row, col - 1}, {row, col + 1}]
-    |> Enum.filter(&follows_direction(graph, &1, location))
     |> Enum.filter(&in_bounds(graph, &1))
     |> Enum.filter(&passable(graph, &1))
   end
 
+  def neighbors(graph, {row, col} = location, came_from) do
+    [{row + 1, col}, {row - 1, col}, {row, col - 1}, {row, col + 1}]
+    |> Enum.filter(&(&1 != came_from))
+    |> Enum.filter(&follows_direction(graph, &1, location))
+    |> Enum.filter(&in_bounds(graph, &1))
+    |> Enum.filter(&passable(graph, &1))
+    |> Enum.filter(&slope_passable(graph, &1, location))
+  end
+
+  # Does location follow the direction of came_from if came_from is a directional tile?
   defp follows_direction(graph, location, {came_from_row, came_from_col} = came_from) do
     direction = graph.directional_tiles[came_from]
 
@@ -124,5 +143,18 @@ defimpl Common.Graph, for: Common.SemiDirectedGridGraph do
 
   defp passable(graph, location) do
     !MapSet.member?(graph.walls, location)
+  end
+
+  # Can the directional tile be stepped on?
+  defp slope_passable(graph, location, {came_from_row, came_from_col}) do
+    direction = graph.directional_tiles[location]
+
+    case direction do
+      :up -> location == {came_from_row - 1, came_from_col}
+      :down -> location == {came_from_row + 1, came_from_col}
+      :left -> location == {came_from_row, came_from_col - 1}
+      :right -> location == {came_from_row, came_from_col + 1}
+      nil -> true
+    end
   end
 end
