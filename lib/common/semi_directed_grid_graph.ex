@@ -35,13 +35,15 @@ defmodule Common.SemiDirectedGridGraph do
   end
 
   def longest_distances(_graph, [], _visited, dists), do: dists
+
   def longest_distances(graph, topo_ordering, visited, dists) do
     debug = {1, 2}
 
     [node | popped_topo_ordering] = topo_ordering
+
     neighbors =
       Common.Graph.neighbors(graph, node)
-      |> Enum.filter(&!MapSet.member?(visited, &1))
+      |> Enum.filter(&(!MapSet.member?(visited, &1)))
 
     if node == debug do
       IO.puts("\nVisiting debug node #{inspect(node)}")
@@ -55,11 +57,14 @@ defmodule Common.SemiDirectedGridGraph do
         node_distance = dists_acc[node]
 
         if neighbor == debug do
-          IO.puts("Evaluating neighbor #{inspect(neighbor)} from #{inspect(node)}: distances #{node_distance}, #{inspect(Map.get(dists_acc, neighbor))}")
+          IO.puts(
+            "Evaluating neighbor #{inspect(neighbor)} from #{inspect(node)}: distances #{node_distance}, #{inspect(Map.get(dists_acc, neighbor))}"
+          )
         end
 
         case Map.get(dists_acc, neighbor) do
-          nil -> Map.put(dists_acc, neighbor, node_distance + 1)
+          nil ->
+            Map.put(dists_acc, neighbor, node_distance + 1)
 
           neighbor_distance ->
             if neighbor_distance < node_distance + 1 do
@@ -67,7 +72,7 @@ defmodule Common.SemiDirectedGridGraph do
             else
               dists_acc
             end
-          end
+        end
       end)
 
     visited = MapSet.put(visited, node)
@@ -82,13 +87,14 @@ defmodule Common.SemiDirectedGridGraph do
 
   # This doesn't work because the graph has loops...
   defp topological_ordering(_graph, _visited, [], ordering), do: ordering
+
   defp topological_ordering(graph, visited, stack, ordering) do
     [visit | popped_stack] = stack
     visited = MapSet.put(visited, visit)
 
     neighbors =
       Common.Graph.neighbors(graph, visit)
-      |> Enum.filter(&!MapSet.member?(visited, &1))
+      |> Enum.filter(&(!MapSet.member?(visited, &1)))
 
     if neighbors == [] do
       topological_ordering(graph, visited, popped_stack, [visit | ordering])
@@ -100,11 +106,12 @@ defmodule Common.SemiDirectedGridGraph do
   def dfs_reduce(graph, initial, func), do: dfs_reduce(graph, initial, func, [])
 
   defp dfs_reduce(_graph, acc, _func, []), do: acc
+
   defp dfs_reduce(graph, acc, func, [{node, came_from} | stack_rest]) do
-      acc = func.(node, acc)
-      stack_ext = neighbors(graph, node, came_from) |> Enum.map(&{&1, node})
-      stack = stack_ext ++ stack_rest
-      dfs_reduce(graph, acc, func, stack)
+    acc = func.(node, acc)
+    stack_ext = neighbors(graph, node, came_from) |> Enum.map(&{&1, node})
+    stack = stack_ext ++ stack_rest
+    dfs_reduce(graph, acc, func, stack)
   end
 
   ## Graph protocol but specialized...
