@@ -15,14 +15,7 @@ aoc 2023, 24 do
     # bound_min = 7
     # bound_max = 27
 
-    pairs =
-      Enum.flat_map(0..(length(hailstones) - 2), fn i ->
-        for j <- (i + 1)..(length(hailstones) - 1) do
-          {Enum.at(hailstones, i), Enum.at(hailstones, j)}
-        end
-      end)
-
-    pairs
+    pairs(hailstones)
     |> Enum.map(fn {h1, h2} -> intersection_2d(h1, h2) end)
     |> Enum.reject(&is_nil/1)
     |> Enum.filter(fn {intersection, t1, t2} -> t1 > 0 && t2 > 0 && in_bounds?(intersection, bound_min, bound_max) end)
@@ -33,9 +26,13 @@ aoc 2023, 24 do
       iex> p2(example_string())
   """
   def p2(input) do
-    parse_input(input)
-    |> Enum.map(fn {{x, y, z}, {dx, dy, dz}} -> "(#{x},#{y},#{z})+(#{dx},#{dy},#{dz})t" end)
-    |> Enum.each(&IO.puts/1)
+    input
+    |> parse_input()
+    |> pairs()
+    |> Enum.find(fn {h1, h2} ->
+      match?({:ok, _plane}, maybe_plane(h1, h2))
+    end)
+
 
     # IDEA
     # 1. Find 2 parallel lines
@@ -55,15 +52,78 @@ aoc 2023, 24 do
   end
 
   @type position() :: {integer(), integer(), integer()}
-  @type velocity() :: {integer(), integer(), integer()}
-  @type hailstone() :: {position(), velocity()}
+  @type vector() :: {integer(), integer(), integer()}
+  @type hailstone() :: {position(), vector()}
   @type collision() :: {float(), float()} | nil
   @type time() :: float()
+  @type plane() :: {integer(), integer(), integer(), integer()}
+
+  @spec parallel?(hailstone(), hailstone()) :: boolean()
+  def parallel?({_p1, v1}, {_p2, v2}) do
+    cross_product(v1, v2) == {0, 0, 0}
+  end
+
+  @spec cross_product(vector(), vector()) :: vector()
+  def cross_product({dx1, dy1, dz1}, {dx2, dy2, dz2}) do
+    {(dy1 * dz2) - (dz1 * dy2), (dz1 * dx2) - (dx1 * dz2), (dx1 * dy2) - (dy1 * dx2)}
+  end
+
+  @doc """
+  Calculate the equation of the plane which contains the 3 given non-colinear points.
+  Returns a 4-tuple {a, b, c, d} representing the equation ax + by + cz + d = 0.
+  """
+  @spec plane_from_3_points(position(), position(), position()) :: plane()
+  def plane_from_3_points({x1, y1, z1} = p1, p2, p3) do
+    v_12 = position_subtract(p2, p1)
+    v_23 = position_subtract(p3, p2)
+    {a, b, c} = cross_product(v_12, v_23)
+    d = -1 * ((a * x1) + (b * y1) + (c * z1))
+
+    {a, b, c, d}
+  end
+
+  @doc """
+  Check if a plane contains a point.
+  """
+  @spec contains_point?(plane(), position()) :: boolean()
+  def contains_point?({a, b, c, d}, {x, y, z}), do: (a * x) + (b * y) + (c * z) + d |> dbg() == 0
+
+  @doc """
+  Check if two hailstones are on the same plane.
+  If so, return {:ok, plane}, otherwise return :error.
+  """
+  @spec maybe_plane(hailstone(), hailstone()) :: {:ok, plane()} | :error
+  def maybe_plane({p1, v1}, {p2, v2}) do
+    p3 = vector_add(p1, v1)
+    plane = plane_from_3_points(p1, p2, p3)
+    p4 = vector_add(p2, v2)
+
+    if contains_point?(plane, p4) do
+      {:ok, plane}
+    else
+      :error
+    end
+  end
+
+  @spec vector_add(position(), vector()) :: position()
+  def vector_add({x, y, z}, {dx, dy, dz}), do: {x + dx, y + dy, z + dz}
+
+  @spec position_subtract(position(), position()) :: vector()
+  def position_subtract({x1, y1, z1}, {x2, y2, z2}), do: {x1 - x2, y1 - y2, z1 - z2}
+
+  @spec pairs([hailstone()]) :: Enumerable.t({hailstone(), hailstone()})
+  def pairs(hailstones) do
+    Stream.flat_map(0..(length(hailstones) - 2), fn i ->
+      for j <- (i + 1)..(length(hailstones) - 1) do
+        {Enum.at(hailstones, i), Enum.at(hailstones, j)}
+      end
+    end)
+  end
 
   @spec intersection_2d(hailstone(), hailstone()) :: {collision(), float(), float()}
   def intersection_2d(h1, h2) do
-    {{x1, y1, _z1}, {dx1, dy1, _dz1}} = h1
-    {{x2, y2, _z2}, {dx2, dy2, _dz2}} = h2
+    {{x1, _y1, _z1}, {dx1, _dy1, _dz1}} = h1
+    {{x2, _y2, _z2}, {dx2, _dy2, _dz2}} = h2
 
     # Hailstone A: 19, 13, 30 @ -2, 1, -2
     # Hailstone B: 18, 19, 22 @ -1, -1, -2

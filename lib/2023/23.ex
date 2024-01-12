@@ -59,7 +59,7 @@ aoc 2023, 23 do
     undirected_longest_distance(graph, start, finish, MapSet.new(), 0)
   end
 
-  defp undirected_longest_distance(graph, node, finish, visited, current_distance) when node == finish do
+  defp undirected_longest_distance(_graph, node, finish, _visited, current_distance) when node == finish do
     current_distance
   end
 
