@@ -32,7 +32,26 @@ aoc 2023, 24 do
   @doc """
       iex> p2(example_string())
   """
-  def p2(_input) do
+  def p2(input) do
+    parse_input(input)
+    |> Enum.map(fn {{x, y, z}, {dx, dy, dz}} -> "(#{x},#{y},#{z})+(#{dx},#{dy},#{dz})t" end)
+    |> Enum.each(&IO.puts/1)
+
+    # IDEA
+    # 1. Find 2 parallel lines
+    # 2. Find the plane between them
+    # 3. Solution will be the line on this plane:
+    #    Find intersections of 2 different lines with this plane, and draw a line between these points
+    #    This line is the rock line.
+    #    Now need to find the velocity (scalar multiple of found direction) and starting point to modify the line
+    #    - Set the direction as the unit vector for now, let that be called u
+    # 4. We know where the rock line is at what value of t
+    # 5. Let t1 be the intersection time of the first line, and t2 the second
+    #    Let i1 be the intersection coordinate of the first line, and i2 the second
+    # 6. Set rock line to be i1 + (i2 - i1)/(t2-t1)t
+    # 7. Solve the rock line for t = -t1
+    #    - Because rock line at t = 0 is i1, but we know i1 occurs at t = t1, so we reverse it that amount to solve the actual equation for t = 0
+    # 8. Sum the components and that's the answer!!!
   end
 
   @type position() :: {integer(), integer(), integer()}
